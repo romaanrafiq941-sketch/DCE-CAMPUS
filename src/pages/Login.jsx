@@ -147,6 +147,7 @@ function Login({ onLogin, showToast }) {
               <span className="password-input-wrap">
                 <input
                   type={showAccessCode ? 'text' : 'password'}
+                  placeholder="DCE-ADMIN-2026"
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
                   required
@@ -169,6 +170,9 @@ function Login({ onLogin, showToast }) {
                   }}
                 />
               </span>
+              <small style={{ display: 'block', marginTop: '6px', fontSize: '13px', color: '#64748b', opacity: 0.9 }}>
+                Admin access code: <strong>DCE-ADMIN-2026</strong>
+              </small>
             </label>
           )}
 

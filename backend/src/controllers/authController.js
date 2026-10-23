@@ -5,24 +5,19 @@ import { getDb, serializeUser } from '../lib/mongo.js'
 import { adminCategorySchema, loginSchema, parseBody, signupSchema } from '../utils/validation.js'
 
 const maxAdminsPerCategory = Number(process.env.ADMIN_CATEGORY_LIMIT || 3)
-const defaultStudentAccessCode = 'DCE-STUDENT-2026'
 const defaultAdminAccessCode = 'DCE-ADMIN-2026'
-const legacyStudentAccessCode = 'GDC-STUDENT-2026'
 const legacyAdminAccessCode = 'GDC-ADMIN-2026'
 const expectedAdminAccessCode = normalizeAccessCode(process.env.ADMIN_ACCESS_CODE || defaultAdminAccessCode)
-const expectedStudentAccessCode = normalizeAccessCode(process.env.STUDENT_ACCESS_CODE || defaultStudentAccessCode)
 const validAdminCodes = new Set([expectedAdminAccessCode, normalizeAccessCode(legacyAdminAccessCode)])
-const validStudentCodes = new Set([expectedStudentAccessCode, normalizeAccessCode(legacyStudentAccessCode)])
 
 function normalizeAccessCode(value) {
   if (typeof value !== 'string') return ''
   return value.trim().replace(/\s+/g, '').toUpperCase()
 }
 
-function accessCodeMatches(role, submittedCode) {
+function accessCodeMatchesAdmin(submittedCode) {
   const normalizedSubmittedCode = normalizeAccessCode(submittedCode)
-  if (role === 'admin') return validAdminCodes.has(normalizedSubmittedCode)
-  return validStudentCodes.has(normalizedSubmittedCode)
+  return validAdminCodes.has(normalizedSubmittedCode)
 }
 
 async function ensureCategoryCapacity(collection, adminCategory, excludedUserId = null) {
@@ -39,14 +34,8 @@ async function ensureCategoryCapacity(collection, adminCategory, excludedUserId 
 export async function signup(req, res, next) {
   try {
     const data = parseBody(signupSchema, req.body)
-    const studentCodeProvided = data.role === 'student' && !!data.accessCode
-    if (data.role === 'admin' && (!expectedAdminAccessCode || !accessCodeMatches('admin', data.accessCode))) {
+    if (data.role === 'admin' && !accessCodeMatchesAdmin(data.accessCode)) {
       const error = new Error('The administrator access code is incorrect.')
-      error.statusCode = 401
-      throw error
-    }
-    if (studentCodeProvided && !accessCodeMatches('student', data.accessCode)) {
-      const error = new Error('The student access code is incorrect.')
       error.statusCode = 401
       throw error
     }
@@ -78,9 +67,8 @@ export async function login(req, res, next) {
     const data = parseBody(loginSchema, req.body)
     const user = await (await getDb()).collection('users').findOne({ email: data.email.toLowerCase() })
     const validPassword = user && await bcrypt.compare(data.password, user.passwordHash)
-    const validAdminCode = data.role !== 'admin' || accessCodeMatches('admin', data.accessCode)
-    const validStudentCode = data.role !== 'student' || !data.accessCode || accessCodeMatches('student', data.accessCode)
-    const valid = validPassword && user.role === data.role && validAdminCode && validStudentCode
+    const validAdminCode = data.role !== 'admin' || accessCodeMatchesAdmin(data.accessCode)
+    const valid = validPassword && user.role === data.role && validAdminCode
     if (!valid) return res.status(401).json({ error: 'Incorrect email, password, access code, or account role.' })
 
     const token = jwt.sign({

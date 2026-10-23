@@ -1,8 +1,12 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 import cors from 'cors'
 import express from 'express'
 import fs from 'node:fs'
-import path from 'node:path'
 import authRoutes from './routes/authRoutes.js'
 import issueRoutes from './routes/issueRoutes.js'
 import settingsRoutes from './routes/settingsRoutes.js'
