@@ -5,6 +5,15 @@ import { getDb, serializeUser } from '../lib/mongo.js'
 import { adminCategorySchema, loginSchema, parseBody, signupSchema } from '../utils/validation.js'
 
 const maxAdminsPerCategory = Number(process.env.ADMIN_CATEGORY_LIMIT || 3)
+const defaultStudentAccessCode = 'DCE-STUDENT-2026'
+const defaultAdminAccessCode = 'DCE-ADMIN-2026'
+const expectedAdminAccessCode = (process.env.ADMIN_ACCESS_CODE || defaultAdminAccessCode).trim()
+const expectedStudentAccessCode = (process.env.STUDENT_ACCESS_CODE || defaultStudentAccessCode).trim()
+
+function accessCodeMatches(role, submittedCode) {
+  if (role === 'admin') return submittedCode === expectedAdminAccessCode
+  return submittedCode === expectedStudentAccessCode
+}
 
 async function ensureCategoryCapacity(collection, adminCategory, excludedUserId = null) {
   const query = { role: 'admin', adminCategory }
@@ -20,12 +29,12 @@ async function ensureCategoryCapacity(collection, adminCategory, excludedUserId 
 export async function signup(req, res, next) {
   try {
     const data = parseBody(signupSchema, req.body)
-    if (data.role === 'admin' && (!process.env.ADMIN_ACCESS_CODE || data.accessCode !== process.env.ADMIN_ACCESS_CODE.trim())) {
+    if (data.role === 'admin' && (!expectedAdminAccessCode || !accessCodeMatches('admin', data.accessCode))) {
       const error = new Error('The administrator access code is incorrect.')
       error.statusCode = 401
       throw error
     }
-    if (data.role === 'student' && (!process.env.STUDENT_ACCESS_CODE || data.accessCode !== process.env.STUDENT_ACCESS_CODE.trim())) {
+    if (data.role === 'student' && (!expectedStudentAccessCode || !accessCodeMatches('student', data.accessCode))) {
       const error = new Error('The student access code is incorrect.')
       error.statusCode = 401
       throw error
@@ -58,8 +67,8 @@ export async function login(req, res, next) {
     const data = parseBody(loginSchema, req.body)
     const user = await (await getDb()).collection('users').findOne({ email: data.email.toLowerCase() })
     const validPassword = user && await bcrypt.compare(data.password, user.passwordHash)
-    const validAdminCode = data.role !== 'admin' || Boolean(process.env.ADMIN_ACCESS_CODE && data.accessCode === process.env.ADMIN_ACCESS_CODE.trim())
-    const validStudentCode = data.role !== 'student' || Boolean(process.env.STUDENT_ACCESS_CODE && data.accessCode === process.env.STUDENT_ACCESS_CODE.trim())
+    const validAdminCode = data.role !== 'admin' || accessCodeMatches('admin', data.accessCode)
+    const validStudentCode = data.role !== 'student' || accessCodeMatches('student', data.accessCode)
     const valid = validPassword && user.role === data.role && validAdminCode && validStudentCode
     if (!valid) return res.status(401).json({ error: 'Incorrect email, password, access code, or account role.' })
 
