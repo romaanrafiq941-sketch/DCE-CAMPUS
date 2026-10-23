@@ -39,12 +39,13 @@ async function ensureCategoryCapacity(collection, adminCategory, excludedUserId 
 export async function signup(req, res, next) {
   try {
     const data = parseBody(signupSchema, req.body)
+    const studentCodeProvided = data.role === 'student' && !!data.accessCode
     if (data.role === 'admin' && (!expectedAdminAccessCode || !accessCodeMatches('admin', data.accessCode))) {
       const error = new Error('The administrator access code is incorrect.')
       error.statusCode = 401
       throw error
     }
-    if (data.role === 'student' && (!expectedStudentAccessCode || !accessCodeMatches('student', data.accessCode))) {
+    if (studentCodeProvided && !accessCodeMatches('student', data.accessCode)) {
       const error = new Error('The student access code is incorrect.')
       error.statusCode = 401
       throw error
@@ -78,7 +79,7 @@ export async function login(req, res, next) {
     const user = await (await getDb()).collection('users').findOne({ email: data.email.toLowerCase() })
     const validPassword = user && await bcrypt.compare(data.password, user.passwordHash)
     const validAdminCode = data.role !== 'admin' || accessCodeMatches('admin', data.accessCode)
-    const validStudentCode = data.role !== 'student' || accessCodeMatches('student', data.accessCode)
+    const validStudentCode = data.role !== 'student' || !data.accessCode || accessCodeMatches('student', data.accessCode)
     const valid = validPassword && user.role === data.role && validAdminCode && validStudentCode
     if (!valid) return res.status(401).json({ error: 'Incorrect email, password, access code, or account role.' })
 
