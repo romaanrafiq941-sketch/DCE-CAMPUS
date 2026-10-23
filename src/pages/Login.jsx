@@ -5,7 +5,7 @@ import { api } from '../api.js'
 function Login({ onLogin, showToast }) {
   const navigate = useNavigate()
   const [role, setRole] = useState(() => 'admin')
-  console.log("Loading updated Login page. Role:", role)
+  console.log('Loading updated Login page. Role:', role)
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,6 +20,7 @@ function Login({ onLogin, showToast }) {
 
   const isStudentRole = role === 'student'
   const isAdminRole = role === 'admin'
+  const defaultAccessCode = isStudentRole ? 'DCE-STUDENT-2026' : 'DCE-ADMIN-2026'
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -141,6 +142,7 @@ function Login({ onLogin, showToast }) {
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
                 required
+                placeholder={defaultAccessCode}
               />
               <button
                 className={showAccessCode ? 'password-toggle is-visible' : 'password-toggle'}
@@ -160,6 +162,7 @@ function Login({ onLogin, showToast }) {
                 }}
               />
             </span>
+            <small className="form-hint">Use: {defaultAccessCode}</small>
           </label>
           {mode === 'signup' && role === 'admin' && (
             <label className="full">
