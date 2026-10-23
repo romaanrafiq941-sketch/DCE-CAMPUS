@@ -4,8 +4,7 @@ import { api } from '../api.js'
 
 function Login({ onLogin, showToast }) {
   const navigate = useNavigate()
-  const [role, setRole] = useState(() => 'admin')
-  console.log('Loading updated Login page. Role:', role)
+  const [role, setRole] = useState(() => 'student')
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,7 +19,6 @@ function Login({ onLogin, showToast }) {
 
   const isStudentRole = role === 'student'
   const isAdminRole = role === 'admin'
-  const defaultAccessCode = isStudentRole ? 'DCE-STUDENT-2026' : 'DCE-ADMIN-2026'
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -35,17 +33,19 @@ function Login({ onLogin, showToast }) {
         setIsSubmitting(false)
         return
       }
+
       try {
         await api.signup({
           email: cleanEmail,
           password,
           role,
-          accessCode,
+          accessCode: role === 'admin' ? accessCode : '',
           adminCategory: role === 'admin' ? adminCategory : undefined
         })
         setMode('login')
         setPassword('')
         setConfirmPassword('')
+        setAccessCode('')
         showToast('Account created! Please log in to continue.')
       } catch (requestError) {
         setError(requestError.message)
@@ -56,7 +56,12 @@ function Login({ onLogin, showToast }) {
     }
 
     try {
-      const authResponse = await api.login({ email: cleanEmail, password, role, accessCode })
+      const authResponse = await api.login({
+        email: cleanEmail,
+        password,
+        role,
+        accessCode: role === 'admin' ? accessCode : ''
+      })
       onLogin(authResponse)
       showToast('Welcome to GDC Ganderbal CampusFix!')
       navigate(role === 'admin' ? '/admin' : '/home')
@@ -105,6 +110,7 @@ function Login({ onLogin, showToast }) {
             Email
             <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </label>
+
           <label className="full">
             Password
             <span className="password-input-wrap">
@@ -134,36 +140,38 @@ function Login({ onLogin, showToast }) {
               />
             </span>
           </label>
-          <label className="full">
-            {role === 'admin' ? 'Administrator access code' : 'Student access code'}
-            <span className="password-input-wrap">
-              <input
-                type={showAccessCode ? 'text' : 'password'}
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                required
-                placeholder={defaultAccessCode}
-              />
-              <button
-                className={showAccessCode ? 'password-toggle is-visible' : 'password-toggle'}
-                type="button"
-                aria-label={showAccessCode ? 'Hide access code' : 'Show access code'}
-                title={showAccessCode ? 'Hide access code' : 'Show access code'}
-                aria-pressed={showAccessCode}
-                onPointerDown={(e) => {
-                  e.preventDefault()
-                  setShowAccessCode((visible) => !visible)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+
+          {role === 'admin' && (
+            <label className="full">
+              Administrator access code
+              <span className="password-input-wrap">
+                <input
+                  type={showAccessCode ? 'text' : 'password'}
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  required
+                />
+                <button
+                  className={showAccessCode ? 'password-toggle is-visible' : 'password-toggle'}
+                  type="button"
+                  aria-label={showAccessCode ? 'Hide access code' : 'Show access code'}
+                  title={showAccessCode ? 'Hide access code' : 'Show access code'}
+                  aria-pressed={showAccessCode}
+                  onPointerDown={(e) => {
                     e.preventDefault()
                     setShowAccessCode((visible) => !visible)
-                  }
-                }}
-              />
-            </span>
-            <small className="form-hint">Use: {defaultAccessCode}</small>
-          </label>
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setShowAccessCode((visible) => !visible)
+                    }
+                  }}
+                />
+              </span>
+            </label>
+          )}
+
           {mode === 'signup' && role === 'admin' && (
             <label className="full">
               Issue category managed by this administrator
@@ -178,6 +186,7 @@ function Login({ onLogin, showToast }) {
               </select>
             </label>
           )}
+
           {mode === 'signup' && (
             <label className="full">
               Confirm password
@@ -208,6 +217,7 @@ function Login({ onLogin, showToast }) {
               </span>
             </label>
           )}
+
           <button className="primary full submit-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? <span className="button-loading"><span /> Working...</span> : mode === 'signup' ? `Create ${roleName} Account` : `Log in as ${roleName}`}
           </button>
