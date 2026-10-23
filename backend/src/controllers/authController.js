@@ -7,8 +7,12 @@ import { adminCategorySchema, loginSchema, parseBody, signupSchema } from '../ut
 const maxAdminsPerCategory = Number(process.env.ADMIN_CATEGORY_LIMIT || 3)
 const defaultStudentAccessCode = 'DCE-STUDENT-2026'
 const defaultAdminAccessCode = 'DCE-ADMIN-2026'
+const legacyStudentAccessCode = 'GDC-STUDENT-2026'
+const legacyAdminAccessCode = 'GDC-ADMIN-2026'
 const expectedAdminAccessCode = normalizeAccessCode(process.env.ADMIN_ACCESS_CODE || defaultAdminAccessCode)
 const expectedStudentAccessCode = normalizeAccessCode(process.env.STUDENT_ACCESS_CODE || defaultStudentAccessCode)
+const validAdminCodes = new Set([expectedAdminAccessCode, normalizeAccessCode(legacyAdminAccessCode)])
+const validStudentCodes = new Set([expectedStudentAccessCode, normalizeAccessCode(legacyStudentAccessCode)])
 
 function normalizeAccessCode(value) {
   if (typeof value !== 'string') return ''
@@ -17,8 +21,8 @@ function normalizeAccessCode(value) {
 
 function accessCodeMatches(role, submittedCode) {
   const normalizedSubmittedCode = normalizeAccessCode(submittedCode)
-  if (role === 'admin') return normalizedSubmittedCode === expectedAdminAccessCode
-  return normalizedSubmittedCode === expectedStudentAccessCode
+  if (role === 'admin') return validAdminCodes.has(normalizedSubmittedCode)
+  return validStudentCodes.has(normalizedSubmittedCode)
 }
 
 async function ensureCategoryCapacity(collection, adminCategory, excludedUserId = null) {
